@@ -101,6 +101,11 @@ def main():
     speed_limit = 60  # 默认限速 60 km/h
     speed_warning_enabled = True
     
+    # 行驶数据统计
+    distance_traveled = 0.0  # 行驶距离（米）
+    start_time = None        # 开始时间
+    last_location = None     # 上一帧位置
+    
     # 获取车辆状态数据
     def get_vehicle_data():
         velocity = vehicle.get_velocity()
@@ -153,13 +158,22 @@ def main():
             speed_warning = True
             speed_warning_color = (0, 0, 255)  # 红色警告
         
+        # 计算平均速度
+        avg_speed = 0.0
+        if start_time is not None:
+            elapsed_time = (current_frame * settings.fixed_delta_seconds) / 3600  # 小时
+            if elapsed_time > 0 and distance_traveled > 0:
+                avg_speed = (distance_traveled / 1000) / elapsed_time  # km/h
+        
         hud_lines = [
             f"Speed: {data['speed']} km/h",
             f"Limit: {speed_limit} km/h",
             f"Throttle: {data['throttle']}%",
             f"Steer: {data['steer']}%",
             f"Gear: {data['gear']}",
-            f"Brake: {data['brake_status']}"
+            f"Brake: {data['brake_status']}",
+            f"Distance: {distance_traveled:.1f} m",
+            f"Avg Speed: {avg_speed:.1f} km/h"
         ]
         
         start_x = 10
@@ -182,6 +196,14 @@ def main():
             world.tick()
             current_frame = world.get_snapshot().frame
             update_top_view()
+            
+            # 更新行驶距离统计
+            current_location = vehicle.get_location()
+            if last_location is not None:
+                distance_traveled += current_location.distance(last_location)
+            last_location = current_location
+            if start_time is None:
+                start_time = current_frame
 
             # 查找最新完整帧
             latest = None
