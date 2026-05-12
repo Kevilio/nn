@@ -46,12 +46,47 @@ def main():
     vehicle.set_autopilot(True)
     spectator = world.get_spectator()
 
-    # 90° 俯视跟随（完全硬跟随）
+    # 视角模式
+    camera_mode = 'top'  # 'top', 'follow', 'chase', 'side'
+    
+    # 90° 俯视跟随
     def update_top_view():
         trans = vehicle.get_transform()
         loc = trans.location + carla.Location(z=20)
         rot = carla.Rotation(pitch=-90, yaw=trans.rotation.yaw)
         spectator.set_transform(carla.Transform(loc, rot))
+    
+    # 第三人称跟随视角
+    def update_follow_view():
+        trans = vehicle.get_transform()
+        loc = trans.location + carla.Location(x=-5, z=3)
+        rot = carla.Rotation(pitch=-15, yaw=trans.rotation.yaw)
+        spectator.set_transform(carla.Transform(loc, rot))
+    
+    # 追逐视角（车尾正后方）
+    def update_chase_view():
+        trans = vehicle.get_transform()
+        loc = trans.location + carla.Location(x=-8, z=2)
+        rot = carla.Rotation(pitch=0, yaw=trans.rotation.yaw)
+        spectator.set_transform(carla.Transform(loc, rot))
+    
+    # 侧视视角
+    def update_side_view():
+        trans = vehicle.get_transform()
+        loc = trans.location + carla.Location(y=-6, z=3)
+        rot = carla.Rotation(pitch=-10, yaw=trans.rotation.yaw + 90)
+        spectator.set_transform(carla.Transform(loc, rot))
+    
+    # 更新 spectator 视角
+    def update_spectator():
+        if camera_mode == 'top':
+            update_top_view()
+        elif camera_mode == 'follow':
+            update_follow_view()
+        elif camera_mode == 'chase':
+            update_chase_view()
+        elif camera_mode == 'side':
+            update_side_view()
 
     # 相机传感器
     cam_w, cam_h = 640, 480
@@ -101,14 +136,6 @@ def main():
     speed_limit = 60  # 默认限速 60 km/h
     speed_warning_enabled = True
     
-<<<<<<< HEAD
-    # 行驶数据统计
-    distance_traveled = 0.0  # 行驶距离（米）
-    start_time = None        # 开始时间
-    last_location = None     # 上一帧位置
-    
-=======
->>>>>>> upstream/main
     # 获取车辆状态数据
     def get_vehicle_data():
         velocity = vehicle.get_velocity()
@@ -161,25 +188,13 @@ def main():
             speed_warning = True
             speed_warning_color = (0, 0, 255)  # 红色警告
         
-<<<<<<< HEAD
-        # 计算平均速度
-        avg_speed = 0.0
-        if start_time is not None:
-            elapsed_time = (current_frame * settings.fixed_delta_seconds) / 3600  # 小时
-            if elapsed_time > 0 and distance_traveled > 0:
-                avg_speed = (distance_traveled / 1000) / elapsed_time  # km/h
-        
-=======
->>>>>>> upstream/main
         hud_lines = [
             f"Speed: {data['speed']} km/h",
             f"Limit: {speed_limit} km/h",
             f"Throttle: {data['throttle']}%",
             f"Steer: {data['steer']}%",
             f"Gear: {data['gear']}",
-            f"Brake: {data['brake_status']}",
-            f"Distance: {distance_traveled:.1f} m",
-            f"Avg Speed: {avg_speed:.1f} km/h"
+            f"Brake: {data['brake_status']}"
         ]
         
         start_x = 10
@@ -201,15 +216,7 @@ def main():
         while True:
             world.tick()
             current_frame = world.get_snapshot().frame
-            update_top_view()
-            
-            # 更新行驶距离统计
-            current_location = vehicle.get_location()
-            if last_location is not None:
-                distance_traveled += current_location.distance(last_location)
-            last_location = current_location
-            if start_time is None:
-                start_time = current_frame
+            update_spectator()
 
             # 查找最新完整帧
             latest = None
@@ -273,6 +280,18 @@ def main():
             elif key == ord('w') or key == ord('W'):
                 speed_warning_enabled = not speed_warning_enabled
                 print(f"速度警告 {'开启' if speed_warning_enabled else '关闭'}")
+            elif key == ord('t') or key == ord('T'):
+                camera_mode = 'top'
+                print("切换到俯视视角")
+            elif key == ord('f') or key == ord('F'):
+                camera_mode = 'follow'
+                print("切换到第三人称跟随视角")
+            elif key == ord('c') or key == ord('C'):
+                camera_mode = 'chase'
+                print("切换到追逐视角")
+            elif key == ord('s') or key == ord('S'):
+                camera_mode = 'side'
+                print("切换到侧视视角")
 
             # 清理旧帧
             max_to_keep = 5
