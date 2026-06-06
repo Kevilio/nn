@@ -40,6 +40,18 @@ view_mode = 'top'
 speed_limit = 60
 speed_warning = True
 
+# 车辆行驶轨迹
+trail_points = []
+max_trail_length = 200  # 最多记录200个轨迹点
+
+def get_color_by_time(index, total):
+    # 轨迹颜色随时间变化：蓝色(新) -> 红色(旧)
+    ratio = index / total
+    r = int(255 * ratio)
+    g = int(100 * (1 - ratio))
+    b = int(255 * (1 - ratio))
+    return (b, g, r)  # OpenCV是BGR格式
+
 # 导航
 nav_enabled = False
 destination = None
@@ -133,6 +145,27 @@ try:
             speed = np.sqrt(vehicle.get_velocity().x**2 + vehicle.get_velocity().y**2) * 3.6
             speed_color = (0,0,255) if speed_warning and speed > speed_limit else (0,255,0)
             
+            # 记录轨迹点
+            current_loc = vehicle.get_location()
+            trail_points.append((current_loc.x, current_loc.y))
+            if len(trail_points) > max_trail_length:
+                trail_points.pop(0)
+            
+            # 绘制轨迹
+            if len(trail_points) > 1:
+                for i in range(1, len(trail_points)):
+                    pt1 = trail_points[i-1]
+                    pt2 = trail_points[i]
+                    color = get_color_by_time(i-1, len(trail_points))
+                    # 将世界坐标转换为图像坐标（简化处理）
+                    img_x1 = int(320 + (pt1[0] - current_loc.x) * 5)
+                    img_y1 = int(240 + (pt1[1] - current_loc.y) * 5)
+                    img_x2 = int(320 + (pt2[0] - current_loc.x) * 5)
+                    img_y2 = int(240 + (pt2[1] - current_loc.y) * 5)
+                    # 只在画面范围内绘制
+                    if 0 <= img_x1 < 640 and 0 <= img_y1 < 480 and 0 <= img_x2 < 640 and 0 <= img_y2 < 480:
+                        cv2.line(frame, (img_x1, img_y1), (img_x2, img_y2), color, 2)
+            
             cv2.putText(frame, f"Speed: {speed:.1f} km/h", (10,30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, speed_color, 2)
             cv2.putText(frame, f"Limit: {speed_limit} km/h", (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,0), 2)
             cv2.putText(frame, f"View: {view_mode}", (10,90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
@@ -140,6 +173,7 @@ try:
             cv2.putText(frame, f"Time: {current_hour:02d}:00", (10,150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
             cv2.putText(frame, f"Nav: {'ON' if nav_enabled else 'OFF'}", (10,180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 2)
             cv2.putText(frame, f"Parking: {'ACTIVE' if parking else 'READY'}", (10,210), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0) if parking else (255,255,255), 2)
+            cv2.putText(frame, f"Trail: {len(trail_points)} pts", (10,240), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,165,0), 2)
             
             cv2.imshow("HUD", frame)
         
